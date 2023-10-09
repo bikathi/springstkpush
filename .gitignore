@@ -1,0 +1,49 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### VueJS ###
+### VueJS ###
+src/springstkpush-ui/node_modules
+src/springstkpush-ui/dist
+src/springstkpush-ui/dist-ssr
+src/springstkpush-ui/.vscode/*
+src/springstkpush-ui/!.vscode/extensions.json
+src/springstkpush-ui/.idea
+src/springstkpush-ui/.DS_Store
+src/springstkpush-ui/*.suo
+src/springstkpush-ui/*.ntvs*
+src/springstkpush-ui/*.njsproj
+src/springstkpush-ui/*.sln
+src/springstkpush-ui/*.sw?
+src/springstkpush-ui/node
