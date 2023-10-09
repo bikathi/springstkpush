@@ -1,30 +1,48 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+	import PaymentFormImage from "./components/PaymentFormImage.vue";
+	import { OrbitSpinner } from "epic-spinners";
+	import { ref } from "vue";
+
+	const formLoading = ref(false);
+	const mobileNumber = ref("");
+	const paymentAmount = ref("");
+
+	const handleFormSubmission = () => {
+		formLoading.value = true;
+	};
 </script>
 
 <template>
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
-  </div>
-  <HelloWorld msg="Vite + Vue" />
+	<main class="flex h-screen justify-center items-center">
+		<form
+			class="rounded-md p-4 w-[35%] flex justify-center items-center flex-col h-fit"
+			@submit.prevent="handleFormSubmission">
+			<PaymentFormImage />
+			<h1 class="text-2xl font-semibold">STK Payment Request</h1>
+			<input
+				type="text"
+				placeholder="mobile number e.g. 254..."
+				class="input-fields"
+				name="mobile-number"
+				v-model="mobileNumber" />
+			<input
+				type="text"
+				placeholder="amount"
+				class="input-fields"
+				name="amount"
+				v-model="paymentAmount" />
+			<div class="flex justify-center w-full">
+				<button
+					class="bg-purple-400 hover:bg-purple-600 transition-colors duration-200 ease-linear p-2 text-white rounded-md w-1/2 inline-flex justify-center items-center"
+					type="submit">
+					<span v-if="!formLoading">Purchase</span>
+					<orbit-spinner
+						v-else
+						:animation-duration="1200"
+						:size="28"
+						color="#ffffff" />
+				</button>
+			</div>
+		</form>
+	</main>
 </template>
-
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
-</style>
