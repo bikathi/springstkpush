@@ -44,7 +44,7 @@
 <template>
 	<main class="flex flex-col h-screen justify-center items-center">
 		<form
-			class="rounded-md p-4 w-[35%] flex justify-center items-center flex-col h-fit"
+			class="rounded-md p-4 w-full md:w-[35%] flex justify-center items-center flex-col h-fit"
 			@submit.prevent="handleFormSubmission">
 			<PaymentFormImage />
 			<h1 class="text-2xl font-semibold">STK Payment Request</h1>
