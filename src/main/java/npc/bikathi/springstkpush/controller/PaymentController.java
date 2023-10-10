@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import npc.bikathi.springstkpush.payload.request.InitiatePaymentRequest;
+import npc.bikathi.springstkpush.state.PaymentStatus;
 import npc.bikathi.springstkpush.util.StkPushUtils;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -29,8 +32,8 @@ public class PaymentController {
     @Value("${mpesa.public.passkey}")
     private String PASSWORD_KEY;
 
-    @Value("${mpesa.callback.url}")
-    private String CALLBACK_URL;
+    @Value("${mpesa.callback.urlbase}")
+    private String CALLBACK_URLBASE;
 
     private final Gson gson = new Gson();
 
@@ -46,9 +49,6 @@ public class PaymentController {
 
             // wait for the base64 password String
             String b64PasswordString = stkPushUtils.generateB64PassString(SHORT_CODE, PASSWORD_KEY, timestamp);
-            log.info("Timestamp generated: {}", timestamp);
-            log.info("Access token successfully gotten: {}", accessToken);
-            log.info("Base64 Password String: {}", b64PasswordString);
 
             // get a new OKHTTP client
             OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -67,7 +67,7 @@ public class PaymentController {
                     .PartyA("254113883976")
                     .PartyB(SHORT_CODE)
                     .PhoneNumber(paymentRequest.getNumber())
-                    .CallBackURL(CALLBACK_URL)
+                    .CallBackURL(String.format("%s/api/v1/payment/callback", CALLBACK_URLBASE))
                     .AccountReference("SpringAppLTD")
                     .TransactionDesc("STK Test")
                     .build();
@@ -82,26 +82,54 @@ public class PaymentController {
                     .header("Authorization", String.format("Bearer %s", accessToken))
                     .build();
 
-            // execute the request
+            // execute the request for initiating STK push request
             try (Response response = httpClient.newCall(stkPushRequest).execute()) {
                 if (response.body() != null) {
                     InitiateSTKPushResBody responseObj = gson.fromJson(response.body().charStream(), InitiateSTKPushResBody.class);
-                    log.info("Response body object: {}", responseObj.toString());
+                    if(!Objects.equals(responseObj.getResponseCode(), "0")) { // Object.equals() is null-safe
+                        log.error("STK Push request failed to go through...");
+                    }
+
+                    log.info("Response body object: {}", responseObj);
+                    // manually check for the payment status after manually waiting for 5 seconds
+                    Thread.sleep(5000);
+
+                    // check at max 7 times for the payment status with pauses of 5 seconds in between each check
+                    verLoop:
+                    for(int i = 0; i < 7; i++) {
+                        PaymentStatus paymentStatus = stkPushUtils.verifyPaymentStatus(responseObj.getCheckoutRequestID(), b64PasswordString, timestamp, accessToken);
+                        switch (paymentStatus) {
+                            case STATUS_ACCEPTED -> {
+                                log.info("Client has successfully paid...");
+                                break verLoop;
+                            }
+                            case STATUS_CANCELLED -> {
+                                log.info("Client has cancelled the transaction...");
+                                break verLoop;
+                            }
+                            case STATUS_PENDING -> {
+                                log.info("Transaction is still processing...");
+                                Thread.sleep(5000);
+                            }
+                        }
+                    }
                 }
+            } catch (Exception e) {
+                log.error("Error occurred in the request: {}", e.getMessage());
             }
         } catch(IOException ex) {
             log.error("IOException occurred: {}", ex.getMessage());
         }
 
-
-        // initiate STK push request
-
-        // wait for out callback to run at max 7 times with intervals of 5 seconds between
-
-        // if the callback fails, manually check for the payment status
-
         // return response to the user
         return null;
+    }
+    @RequestMapping(value = "/callback")
+    public void initiateSTKPushCallback(@org.springframework.web.bind.annotation.RequestBody CallbackResBody callbackResBody) {
+        log.info("Callback response body: {}", callbackResBody.toString());
+        if(callbackResBody.getBody().getStkCallback().getResultCode() != 0) {
+            log.info("According to the callback, the payment did not go through...");
+        }
     }
 }
 
@@ -124,6 +152,8 @@ class InitiateSTKPushReqBody {
     private String TransactionDesc;
 }
 
+
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -136,4 +166,69 @@ class InitiateSTKPushResBody {
     private String ResponseCode;
     private String ResponseDescription;
     private String CustomerMessage;
+}
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Getter
+@Setter
+@ToString
+class CallbackResBody {
+    private Body Body;
+
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @Getter
+    @Setter
+    @ToString
+    static class Body {
+        private StkCallback stkCallback;
+
+        @NoArgsConstructor
+        @AllArgsConstructor
+        @Builder
+        @Getter
+        @Setter
+        @ToString
+        static class StkCallback {
+            private String MerchantRequestID;
+            private String CheckoutRequestID;
+            private Integer ResultCode;
+            private String ResultDesc;
+            private CallbackMetadata CallbackMetadata;
+
+            @NoArgsConstructor
+            @AllArgsConstructor
+            @Builder
+            @Getter
+            @Setter
+            @ToString
+            static class CallbackMetadata {
+                private Item Item;
+
+                @NoArgsConstructor
+                @AllArgsConstructor
+                @Builder
+                @Getter
+                @Setter
+                @ToString
+                private static class Item {
+                    private List<Items> itemsList;
+
+                    @NoArgsConstructor
+                    @AllArgsConstructor
+                    @Builder
+                    @Getter
+                    @Setter
+                    @ToString
+                    private static class Items {
+                        private String Name;
+                        private Object Value;
+                    }
+                }
+            }
+        }
+    }
 }
