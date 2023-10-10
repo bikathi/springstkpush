@@ -1,18 +1,59 @@
 package npc.bikathi.springstkpush.util;
 
+import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.util.Base64;
+import java.util.concurrent.TimeUnit;
+
 @Component
+@Slf4j
 public class StkPushUtils {
     @Value("${mpesa.consumer.key}")
     private String CONSUMER_KEY;
 
     @Value("${mpesa.consumer.secret}")
-    private String COMSUMER_SECRET;
+    private String CONSUMER_SECRET;
 
-    public static String requestAuthToken() {
-        return null;
+    private final Gson gson = new Gson();
+    private String accessToken;
+
+    public String requestAuthToken() throws java.io.IOException {
+        log.info("Attempting to generate access token...");
+        log.info("MPESA consumer key: {}", CONSUMER_KEY);
+        log.info("MPESA consumer secret: {}", CONSUMER_SECRET);
+        // get a new OKHTTP client
+        OkHttpClient httpClient = new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
+
+        // create a Base64 String of 'CONSUMER_KEY:CONSUMER_SECRET'
+        final String encodedString = Base64.getEncoder().encodeToString(String.format("%s:%s", CONSUMER_KEY, CONSUMER_SECRET).getBytes());
+        log.info("Encoded string: {}", encodedString);
+
+        // build the request
+        Request authTokenRequest = new Request.Builder()
+                .url("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials")
+                .method("GET", null)
+                .header("Authorization", String.format("Basic %s", encodedString))
+                .build();
+
+        // execute the request
+        try (Response response = httpClient.newCall(authTokenRequest).execute()) {
+            if (response.body() != null) {
+                AuthTokenResponse responseObj = gson.fromJson(response.body().charStream(), AuthTokenResponse.class);
+                accessToken = responseObj.access_token;
+                log.info("Access token: {}", accessToken);
+            }
+        }
+        return accessToken;
     }
 
     public static String generateTimestampString() {
@@ -21,5 +62,10 @@ public class StkPushUtils {
 
     public static String generateB64PassString() {
         return null;
+    }
+
+    private static class AuthTokenResponse {
+        String access_token;
+        String expires_in;
     }
 }
