@@ -6,14 +6,43 @@
 	const formLoading = ref(false);
 	const mobileNumber = ref("");
 	const paymentAmount = ref("");
+	const responseMessage = ref("");
 
-	const handleFormSubmission = () => {
+	const handleFormSubmission = async () => {
 		formLoading.value = true;
+
+		const requestBody = {
+			number: mobileNumber.value,
+			amount: paymentAmount.value,
+		};
+		await fetch("/api/v1/payment/initiate", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(requestBody),
+		})
+			.then((response) => {
+				if (response.status !== 200) {
+					console.error(
+						"Something went wrong. Please try again later."
+					);
+					formLoading.value = false;
+					return response.json();
+				}
+
+				formLoading.value = false;
+				return response.json();
+			})
+			.then((data) => {
+				console.log(`Response data: ${JSON.stringify(data)}`);
+				responseMessage.value = data.message;
+			});
 	};
 </script>
 
 <template>
-	<main class="flex h-screen justify-center items-center">
+	<main class="flex flex-col h-screen justify-center items-center">
 		<form
 			class="rounded-md p-4 w-[35%] flex justify-center items-center flex-col h-fit"
 			@submit.prevent="handleFormSubmission">
@@ -44,5 +73,10 @@
 				</button>
 			</div>
 		</form>
+		<span
+			v-if="responseMessage"
+			class="text-gray-500 font-semibold text-lg"
+			>{{ responseMessage }}</span
+		>
 	</main>
 </template>
