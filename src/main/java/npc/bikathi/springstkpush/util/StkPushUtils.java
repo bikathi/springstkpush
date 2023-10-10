@@ -34,7 +34,6 @@ public class StkPushUtils {
 
         // create a Base64 String of 'CONSUMER_KEY:CONSUMER_SECRET'
         final String encodedString = Base64.getEncoder().encodeToString(String.format("%s:%s", CONSUMER_KEY, CONSUMER_SECRET).getBytes());
-        log.info("Encoded string: {}", encodedString);
 
         // build the request
         Request authTokenRequest = new Request.Builder()
@@ -61,8 +60,7 @@ public class StkPushUtils {
     }
 
     public String generateB64PassString(@NotNull String shortCode, @NotNull String passwordkey, @NotNull String timeStamp) {
-        String encodedString = Base64.getEncoder().encodeToString(String.format("%s%s%s", shortCode, passwordkey, timeStamp).getBytes());
-        return encodedString;
+        return Base64.getEncoder().encodeToString(String.format("%s%s%s", shortCode, passwordkey, timeStamp).getBytes());
     }
 
     private static class AuthTokenResponse {
