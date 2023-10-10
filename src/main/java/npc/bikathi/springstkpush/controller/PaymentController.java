@@ -19,8 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.WebRequest;
 
 import java.io.IOException;
 import java.util.Date;
@@ -58,6 +58,9 @@ public class PaymentController {
                 .build();
 
         try {
+            // save transaction record in DB
+            TransactionRecord transactionRecord = transactionRecordService.insertTransaction(newTransactionRecord);
+
             // wait for the access token to be generated
             String accessToken = stkPushUtils.requestAuthToken();
 
@@ -84,7 +87,7 @@ public class PaymentController {
                     .PartyA("254113883976")
                     .PartyB(SHORT_CODE)
                     .PhoneNumber(paymentRequest.getNumber())
-                    .CallBackURL(String.format("%s/api/v1/payment/callback", CALLBACK_URLBASE))
+                    .CallBackURL(String.format("%s/api/v1/payment/callback?transactionId=%s", CALLBACK_URLBASE, transactionRecord.getTransactionId()))
                     .AccountReference("SpringAppLTD")
                     .TransactionDesc("STK Test")
                     .build();
@@ -109,9 +112,6 @@ public class PaymentController {
                     }
 
                     log.info("STK Push request went through...");
-
-                    // save transaction record in DB
-                    TransactionRecord transactionRecord = transactionRecordService.insertTransaction(newTransactionRecord);
                     // manually check for the payment status after waiting for 5 seconds
                     Thread.sleep(5000);
 
@@ -145,21 +145,30 @@ public class PaymentController {
                 }
             } catch (Exception e) {
                 log.error("Error occurred in the request: {}", e.getMessage());
-                throw new PaymentRequestException("Encountered an Error. Please Try Again Later");
+                return ResponseEntity.internalServerError().body(new EndpointResponse(HttpStatus.OK.value(), new Date(), "Encountered an Error. Please Try Again Later", null));
             }
         } catch(IOException ex) {
             log.error("IOException occurred: {}", ex.getMessage());
-            throw new PaymentRequestException("Encountered an Error. Please Try Again Later");
+            return ResponseEntity.internalServerError().body(new EndpointResponse(HttpStatus.OK.value(), new Date(), "Encountered an Error. Please Try Again Later", null));
         }
 
         // return response to the user
         return ResponseEntity.ok().body(new EndpointResponse(HttpStatus.OK.value(), new Date(), "Successful Payment", null));
     }
     @RequestMapping(value = "/callback")
-    public void initiateSTKPushCallback(@org.springframework.web.bind.annotation.RequestBody CallbackResBody callbackResBody) {
+    public void initiateSTKPushCallback(
+            @org.springframework.web.bind.annotation.RequestBody CallbackResBody callbackResBody, @RequestParam String transactionId
+    ) {
         log.info("Callback response body: {}", callbackResBody.toString());
-        if(callbackResBody.getBody().getStkCallback().getResultCode() != 0) {
+        Long id = Long.valueOf(transactionId);
+        TransactionRecord existingRecord = transactionRecordService.retrieveExistingTransaction(id).orElseThrow();
+        if(callbackResBody.getBody().getStkCallback().getResultCode() != 0) { // if it's not zero then the payment didn't go through, which we take as a cancel
             log.info("According to the callback, the payment did not go through...");
+            existingRecord.setPaymentStatus(PaymentStatus.STATUS_CANCELLED);
+            transactionRecordService.insertTransaction(existingRecord);
+        } else {
+            existingRecord.setPaymentStatus(PaymentStatus.STATUS_ACCEPTED);
+            transactionRecordService.insertTransaction(existingRecord);
         }
     }
 }
