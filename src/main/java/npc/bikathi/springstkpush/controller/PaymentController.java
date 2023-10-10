@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import npc.bikathi.springstkpush.payload.request.InitiatePaymentRequest;
+import npc.bikathi.springstkpush.payload.request.InitiateSTKPushReqBody;
+import npc.bikathi.springstkpush.payload.response.CallbackResBody;
+import npc.bikathi.springstkpush.payload.response.InitiateSTKPushResBody;
 import npc.bikathi.springstkpush.state.PaymentStatus;
 import npc.bikathi.springstkpush.util.StkPushUtils;
 import okhttp3.*;
@@ -129,106 +132,6 @@ public class PaymentController {
         log.info("Callback response body: {}", callbackResBody.toString());
         if(callbackResBody.getBody().getStkCallback().getResultCode() != 0) {
             log.info("According to the callback, the payment did not go through...");
-        }
-    }
-}
-
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-@Getter
-@Setter
-class InitiateSTKPushReqBody {
-    private String BusinessShortCode;
-    private String Password;
-    private String Timestamp;
-    private String TransactionType;
-    private String Amount;
-    private String PartyA;
-    private String PartyB;
-    private String PhoneNumber;
-    private String CallBackURL;
-    private String AccountReference;
-    private String TransactionDesc;
-}
-
-
-
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-@Getter
-@Setter
-@ToString
-class InitiateSTKPushResBody {
-    private String MerchantRequestID;
-    private String CheckoutRequestID;
-    private String ResponseCode;
-    private String ResponseDescription;
-    private String CustomerMessage;
-}
-
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-@Getter
-@Setter
-@ToString
-class CallbackResBody {
-    private Body Body;
-
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    @Getter
-    @Setter
-    @ToString
-    static class Body {
-        private StkCallback stkCallback;
-
-        @NoArgsConstructor
-        @AllArgsConstructor
-        @Builder
-        @Getter
-        @Setter
-        @ToString
-        static class StkCallback {
-            private String MerchantRequestID;
-            private String CheckoutRequestID;
-            private Integer ResultCode;
-            private String ResultDesc;
-            private CallbackMetadata CallbackMetadata;
-
-            @NoArgsConstructor
-            @AllArgsConstructor
-            @Builder
-            @Getter
-            @Setter
-            @ToString
-            static class CallbackMetadata {
-                private Item Item;
-
-                @NoArgsConstructor
-                @AllArgsConstructor
-                @Builder
-                @Getter
-                @Setter
-                @ToString
-                private static class Item {
-                    private List<Items> itemsList;
-
-                    @NoArgsConstructor
-                    @AllArgsConstructor
-                    @Builder
-                    @Getter
-                    @Setter
-                    @ToString
-                    private static class Items {
-                        private String Name;
-                        private Object Value;
-                    }
-                }
-            }
         }
     }
 }

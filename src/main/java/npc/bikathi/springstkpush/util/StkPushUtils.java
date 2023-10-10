@@ -3,6 +3,8 @@ package npc.bikathi.springstkpush.util;
 import com.google.gson.Gson;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import npc.bikathi.springstkpush.payload.request.VerifyPaymentRequest;
+import npc.bikathi.springstkpush.payload.response.PaymentVerStatusResBody;
 import npc.bikathi.springstkpush.state.PaymentStatus;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
@@ -117,31 +119,4 @@ public class StkPushUtils {
         String access_token;
         String expires_in;
     }
-}
-
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
-@ToString
-class VerifyPaymentRequest {
-    private String BusinessShortCode;
-    private String Password;
-    private String Timestamp;
-    private String CheckoutRequestID;
-}
-
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-@Getter
-@Setter
-@ToString
-class PaymentVerStatusResBody {
-    private String ResponseCode;
-    private String ResponseDescription;
-    private String MerchantRequestID;
-    private String CheckoutRequestID;
-    private String ResultCode;
-    private String ResultDesc;
 }
