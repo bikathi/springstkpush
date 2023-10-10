@@ -1,12 +1,15 @@
 package npc.bikathi.springstkpush.util;
 
 import com.google.gson.Gson;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import npc.bikathi.springstkpush.state.PaymentStatus;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +22,9 @@ public class StkPushUtils {
 
     @Value("${mpesa.consumer.secret}")
     private String CONSUMER_SECRET;
+
+    @Value("${mpesa.business.shortcode}")
+    private String SHORT_CODE;
 
     private final Gson gson = new Gson();
     private String accessToken;
@@ -53,18 +59,89 @@ public class StkPushUtils {
         return accessToken;
     }
 
+    public PaymentStatus verifyPaymentStatus
+        (@NotNull String checkoutRequestId, @NotNull String password, @NotNull String timeStamp, @NotNull String accessToken) throws java.io.IOException {
+        log.info("Attempting to check status of the payment...");
+
+        // build the request body
+        VerifyPaymentRequest verifyPaymentRequest = new VerifyPaymentRequest(SHORT_CODE, password, timeStamp, checkoutRequestId);
+        String verifyPaymentRequestJson = gson.toJson(verifyPaymentRequest);
+        RequestBody requestBody = RequestBody.create(
+                MediaType.parse("application/json"), verifyPaymentRequestJson);
+
+        // get a new OKHTTP client
+        OkHttpClient httpClient = new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
+
+        // build the request
+        Request paymentStatusRequest = new Request.Builder()
+                .url("https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query")
+                .method("POST", requestBody)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .build();
+
+        // execute the request
+        try (Response response = httpClient.newCall(paymentStatusRequest).execute()) {
+            if (response.body() != null) {
+                PaymentVerStatusResBody responseBody = gson.fromJson(response.body().charStream(), PaymentVerStatusResBody.class);
+                log.info("Gotten response body: {}", responseBody.toString());
+                if(Objects.equals(responseBody.getResponseCode(), "0")) { // the STK push popup was closed on the client's phone either by paying or by cancelling
+                    if(!Objects.equals(responseBody.getResultCode(), "0")) { // if the result code is not 0 it means the client cancelled the transaction
+                        log.info("client cancelled the transaction...");
+                        return PaymentStatus.STATUS_CANCELLED;
+                    }
+
+                    log.info("Client paid the requested amount...");
+                    return PaymentStatus.STATUS_ACCEPTED;
+                }
+            }
+        }
+
+        return PaymentStatus.STATUS_PENDING;
+    }
+
     public String generateTimestamp() {
         LocalDateTime timeNow = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         return timeNow.format(formatter);
     }
 
-    public String generateB64PassString(@NotNull String shortCode, @NotNull String passwordkey, @NotNull String timeStamp) {
-        return Base64.getEncoder().encodeToString(String.format("%s%s%s", shortCode, passwordkey, timeStamp).getBytes());
+    public String generateB64PassString(@NotNull String shortCode, @NotNull String passwordKey, @NotNull String timeStamp) {
+        return Base64.getEncoder().encodeToString(String.format("%s%s%s", shortCode, passwordKey, timeStamp).getBytes());
     }
 
     private static class AuthTokenResponse {
         String access_token;
         String expires_in;
     }
+}
+
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
+@ToString
+class VerifyPaymentRequest {
+    private String BusinessShortCode;
+    private String Password;
+    private String Timestamp;
+    private String CheckoutRequestID;
+}
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Getter
+@Setter
+@ToString
+class PaymentVerStatusResBody {
+    private String ResponseCode;
+    private String ResponseDescription;
+    private String MerchantRequestID;
+    private String CheckoutRequestID;
+    private String ResultCode;
+    private String ResultDesc;
 }
