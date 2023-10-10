@@ -3,6 +3,7 @@ package npc.bikathi.springstkpush.util;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.util.Base64;
@@ -59,8 +60,9 @@ public class StkPushUtils {
         return timeNow.format(formatter);
     }
 
-    public static String generateB64PassString() {
-        return null;
+    public String generateB64PassString(@NotNull String shortCode, @NotNull String passwordkey, @NotNull String timeStamp) {
+        String encodedString = Base64.getEncoder().encodeToString(String.format("%s%s%s", shortCode, passwordkey, timeStamp).getBytes());
+        return encodedString;
     }
 
     private static class AuthTokenResponse {
