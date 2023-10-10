@@ -3,13 +3,12 @@ package npc.bikathi.springstkpush.util;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
 import java.util.Base64;
 import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Component
 @Slf4j
@@ -25,8 +24,6 @@ public class StkPushUtils {
 
     public String requestAuthToken() throws java.io.IOException {
         log.info("Attempting to generate access token...");
-        log.info("MPESA consumer key: {}", CONSUMER_KEY);
-        log.info("MPESA consumer secret: {}", CONSUMER_SECRET);
         // get a new OKHTTP client
         OkHttpClient httpClient = new OkHttpClient.Builder()
                 .connectTimeout(60, TimeUnit.SECONDS)
@@ -50,14 +47,16 @@ public class StkPushUtils {
             if (response.body() != null) {
                 AuthTokenResponse responseObj = gson.fromJson(response.body().charStream(), AuthTokenResponse.class);
                 accessToken = responseObj.access_token;
-                log.info("Access token: {}", accessToken);
+                log.info("Gotten access token: {}", accessToken);
             }
         }
         return accessToken;
     }
 
-    public static String generateTimestampString() {
-        return null;
+    public String generateTimestamp() {
+        LocalDateTime timeNow = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        return timeNow.format(formatter);
     }
 
     public static String generateB64PassString() {
