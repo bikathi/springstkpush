@@ -1,24 +1,27 @@
 package npc.bikathi.springstkpush.controller;
 
 import com.google.gson.Gson;
-import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import npc.bikathi.springstkpush.exception.PaymentRequestException;
 import npc.bikathi.springstkpush.payload.request.InitiatePaymentRequest;
 import npc.bikathi.springstkpush.payload.request.InitiateSTKPushReqBody;
 import npc.bikathi.springstkpush.payload.response.CallbackResBody;
+import npc.bikathi.springstkpush.payload.response.EndpointResponse;
 import npc.bikathi.springstkpush.payload.response.InitiateSTKPushResBody;
 import npc.bikathi.springstkpush.state.PaymentStatus;
 import npc.bikathi.springstkpush.util.StkPushUtils;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.WebRequest;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Date;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -108,7 +111,7 @@ public class PaymentController {
                             }
                             case STATUS_CANCELLED -> {
                                 log.info("Client has cancelled the transaction...");
-                                break verLoop;
+                                return ResponseEntity.ok().body(new EndpointResponse(HttpStatus.OK.value(), new Date(), "Payment Cancelled By User", null));
                             }
                             case STATUS_PENDING -> {
                                 log.info("Transaction is still processing...");
@@ -119,13 +122,15 @@ public class PaymentController {
                 }
             } catch (Exception e) {
                 log.error("Error occurred in the request: {}", e.getMessage());
+                throw new PaymentRequestException("Encountered an Error. Please Try Again Later");
             }
         } catch(IOException ex) {
             log.error("IOException occurred: {}", ex.getMessage());
+            throw new PaymentRequestException("Encountered an Error. Please Try Again Later");
         }
 
         // return response to the user
-        return null;
+        return ResponseEntity.ok().body(new EndpointResponse(HttpStatus.OK.value(), new Date(), "Successful Payment", null));
     }
     @RequestMapping(value = "/callback")
     public void initiateSTKPushCallback(@org.springframework.web.bind.annotation.RequestBody CallbackResBody callbackResBody) {
