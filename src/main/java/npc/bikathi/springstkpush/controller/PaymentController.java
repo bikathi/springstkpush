@@ -2,12 +2,14 @@ package npc.bikathi.springstkpush.controller;
 
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
+import npc.bikathi.springstkpush.entity.TransactionRecord;
 import npc.bikathi.springstkpush.exception.PaymentRequestException;
 import npc.bikathi.springstkpush.payload.request.InitiatePaymentRequest;
 import npc.bikathi.springstkpush.payload.request.InitiateSTKPushReqBody;
 import npc.bikathi.springstkpush.payload.response.CallbackResBody;
 import npc.bikathi.springstkpush.payload.response.EndpointResponse;
 import npc.bikathi.springstkpush.payload.response.InitiateSTKPushResBody;
+import npc.bikathi.springstkpush.service.TransactionRecordService;
 import npc.bikathi.springstkpush.state.PaymentStatus;
 import npc.bikathi.springstkpush.util.StkPushUtils;
 import okhttp3.*;
@@ -32,6 +34,9 @@ public class PaymentController {
     @Autowired
     private StkPushUtils stkPushUtils;
 
+    @Autowired
+    private TransactionRecordService transactionRecordService;
+
     @Value("${mpesa.business.shortcode}")
     private String SHORT_CODE;
 
@@ -45,7 +50,13 @@ public class PaymentController {
 
     @PostMapping(value = "/initiate")
     public ResponseEntity<?> initiateSTKPushRequest(@org.springframework.web.bind.annotation.RequestBody InitiatePaymentRequest paymentRequest) {
-        // extract mobile and payment details from request body
+        TransactionRecord newTransactionRecord = TransactionRecord.builder()
+                .transactionAmount(Long.valueOf(paymentRequest.getAmount()))
+                .mobileNumber(Long.valueOf(paymentRequest.getNumber()))
+                .dateOfTransaction(new Date())
+                .paymentStatus(PaymentStatus.STATUS_PENDING)
+                .build();
+
         try {
             // wait for the access token to be generated
             String accessToken = stkPushUtils.requestAuthToken();
@@ -94,10 +105,14 @@ public class PaymentController {
                     InitiateSTKPushResBody responseObj = gson.fromJson(response.body().charStream(), InitiateSTKPushResBody.class);
                     if(!Objects.equals(responseObj.getResponseCode(), "0")) { // Object.equals() is null-safe
                         log.error("STK Push request failed to go through...");
+                        return ResponseEntity.internalServerError().body(new EndpointResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), new Date(), "STK Push Request Denied", null));
                     }
 
-                    log.info("Response body object: {}", responseObj);
-                    // manually check for the payment status after manually waiting for 5 seconds
+                    log.info("STK Push request went through...");
+
+                    // save transaction record in DB
+                    TransactionRecord transactionRecord = transactionRecordService.insertTransaction(newTransactionRecord);
+                    // manually check for the payment status after waiting for 5 seconds
                     Thread.sleep(5000);
 
                     // check at max 7 times for the payment status with pauses of 5 seconds in between each check
@@ -107,10 +122,18 @@ public class PaymentController {
                         switch (paymentStatus) {
                             case STATUS_ACCEPTED -> {
                                 log.info("Client has successfully paid...");
+                                // update the transaction status
+                                transactionRecord.setPaymentStatus(PaymentStatus.STATUS_ACCEPTED);
+                                transactionRecordService.insertTransaction(transactionRecord);
+
                                 break verLoop;
                             }
                             case STATUS_CANCELLED -> {
                                 log.info("Client has cancelled the transaction...");
+                                // update the transaction status
+                                transactionRecord.setPaymentStatus(PaymentStatus.STATUS_CANCELLED);
+                                transactionRecordService.insertTransaction(transactionRecord);
+
                                 return ResponseEntity.ok().body(new EndpointResponse(HttpStatus.OK.value(), new Date(), "Payment Cancelled By User", null));
                             }
                             case STATUS_PENDING -> {
