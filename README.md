@@ -1,7 +1,23 @@
-# Vue 3 + Vite
+#SPRING STK-PUSH
+## About
+**Tech Stack**: Java, Javascript, MySQL
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+**Frameworks**: VueJS, Spring, Spring Boot
 
-## Recommended IDE Setup
+**Author**: Bikathi Martin([Gitbub](https://github.com/bikathi))
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+**License**: Apache V2.0
+
+## Information
+This is a very simple Safaricom STK push example that uses Spring to power the backend alongside MySQL as a simple database.
+The user interface is powered by VueJS and for trying out just request for a payment of 1Ksh
+
+## Setup
+You will need your own App credentials in Safaricom's Daraja API. Fill up the `src/main/resources/application.yml` with the necessary data.
+
+## Pre-Requisites
+**Code Inspction**: Any IDE(I used IntelliJ to create this)
+
+**SDK**: Java 17 was used to create this. 
+
+**NodeJS Version**: Node 18.16.1
