@@ -1,10 +1,10 @@
-#SPRING STK-PUSH
+# SPRING STK-PUSH
 ## About
 **Tech Stack**: Java, Javascript, MySQL
 
 **Frameworks**: VueJS, Spring, Spring Boot
 
-**Author**: Bikathi Martin([Gitbub](https://github.com/bikathi))
+**Author**: Bikathi Martin([Github](https://github.com/bikathi))
 
 **License**: Apache V2.0
 
